@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  用户 Mapper
+  namespace 必须精确等于 Mapper 接口的全限定名，否则启动时绑定失败。
+  接口里的每个方法，这里都要有一条 id 同名的语句。
+-->
+<mapper namespace="com.huashan.smartmallbackend.mapper.UserMapper">
+
+    <!-- 公共字段列表：用 <include> 复用，禁止 select * -->
+    <sql id="cols">
+        id, username, password, nickname, role, status, deleted, create_time, update_time
+    </sql>
+
+    <!-- 按用户名查询（登录用） -->
+    <select id="selectByUsername" resultType="User">
+        SELECT
+        <include refid="cols"/>
+        FROM t_user
+        WHERE username = #{username} AND deleted = 0
+    </select>
+
+    <!-- 按主键查询 -->
+    <select id="selectById" resultType="User">
+        SELECT
+        <include refid="cols"/>
+        FROM t_user
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!--
+      管理端分页查询
+      <where> 会自动去掉开头多余的 AND；所有条件都为 null 时，<where> 整体不输出。
+      注意 test 里的字符串空值用单引号 ''，因为属性值外面已经是双引号了。
+    -->
+    <select id="selectPage" resultType="User">
+        SELECT
+        <include refid="cols"/>
+        FROM t_user
+        <where>
+            deleted = 0
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="role != null">
+                AND role = #{role}
+            </if>
+        </where>
+        ORDER BY id ASC
+    </select>
+
+    <!-- 新增用户：useGeneratedKeys 让插入后 user.id 被回填（注册后要返回 id） -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_user (username, password, nickname, role, status)
+        VALUES (#{username}, #{password}, #{nickname}, #{role}, #{status})
+    </insert>
+
+    <!-- 统计用户名是否已存在 -->
+    <select id="countByUsername" resultType="int">
+        SELECT COUNT(*)
+        FROM t_user
+        WHERE username = #{username} AND deleted = 0
+    </select>
+
+</mapper>
