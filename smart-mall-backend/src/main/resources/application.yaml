@@ -1,0 +1,87 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: smart-mall-backend
+
+  # ==================== 模型切换：deepseek / qwen ====================
+  # 两个 profile 只切 chat-model 和 streaming-chat-model
+  # 嵌入模型在下面公共配置里，两个 profile 共用（DeepSeek 没有嵌入接口）
+  profiles:
+    active: deepseek
+
+  # ==================== MySQL ====================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/smart_mall?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+
+  # ==================== 文件上传 ====================
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# ==================== MyBatis ====================
+mybatis:
+  # ★ Mapper 的 SQL 全部写在 XML 里，这里告诉 MyBatis 去哪找
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    # 下划线转驼峰：order_no -> orderNo
+    map-underscore-to-camel-case: true
+    # 打印 SQL，方便调试
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  # 实体别名：XML 里就能写 resultType="User" 而不用写全限定名
+  type-aliases-package: com.huashan.smartmallbackend.entity
+
+# ==================== PageHelper 分页 ====================
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true
+  support-methods-arguments: true
+
+# ==================== LangChain4j 模型 ====================
+langchain4j:
+  open-ai:
+    # 嵌入模型：两个 profile 共用，必须走百炼（DeepSeek 没有嵌入接口）
+    # ⚠️ 注意：不要在本文件里再写第二个 langchain4j: 键，YAML 同 key 会整个覆盖
+    embedding-model:
+      api-key: ${DASHSCOPE_API_KEY}
+      model-name: qwen3.7-text-embedding-flash
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      dimensions: 1024
+
+# ==================== RAG（知识库 = D:/rag 下的售后文档） ====================
+rag:
+  # 向量维度：三处必须一致 —— dimensions 配置 = rag.dimension = 表 VECTOR(n)
+  dimension: 1024
+  # 知识库目录（项目之外的固定路径，与商品表完全无关）
+  dir: D:/rag
+
+# ==================== 向量库切换：memory / pgvector ====================
+vectorstore:
+  type: pgvector
+
+# 用 pgvector 时把上面改成 pgvector，并执行下面的连接配置
+pgvector:
+  host: localhost
+  port: 5432
+  database: ai_db
+  user: postgres
+  password: postgres
+  table: after_sales_embedding
+
+# ==================== MCP（可选能力，默认关闭） ====================
+smartsvc:
+  mcp:
+    enabled: true
+    amap-key: ${AMAP_MAPS_API_KEY:}
+
+# ==================== 日志 ====================
+logging:
+  level:
+    root: info
+    com.huashan.smartmallbackend: debug
+    dev.langchain4j: info

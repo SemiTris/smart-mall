@@ -1,0 +1,28 @@
+# ============================================================
+#  DeepSeek 模型配置（默认激活）
+#  激活方式：application.yml 里 spring.profiles.active: deepseek
+#
+#  ⚠️ 只在 langchain4j.open-ai 下写 chat-model / streaming-chat-model
+#     不要在这里再写 embedding-model（公共配置里已有，会冲突）
+# ============================================================
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: ${DEEPSEEK_API_KEY}
+      model-name: deepseek-v4-flash
+      base-url: https://api.deepseek.com/v1
+      temperature: 0.7
+      timeout: PT60S
+      # 写操作要设为 0；本项目只有查询类工具，留 2 次容错
+      max-retries: 2
+      log-requests: true
+      log-responses: true
+
+    streaming-chat-model:
+      api-key: ${DEEPSEEK_API_KEY}
+      model-name: deepseek-v4-flash
+      base-url: https://api.deepseek.com/v1
+      temperature: 0.7
+      timeout: PT60S
+      log-requests: true
+      log-responses: true

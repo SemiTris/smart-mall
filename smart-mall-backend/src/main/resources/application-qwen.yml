@@ -1,0 +1,28 @@
+# ============================================================
+#  通义千问模型配置（备选）
+#  激活方式：application.yml 里 spring.profiles.active: qwen
+#
+#  什么时候用它？
+#  如果 DeepSeek 的 @Tool 调用返回 <||DSML||> 这种原始文本而不是执行工具，
+#  说明它的函数调用格式没被解析 —— 把 active 改成 qwen 即可，代码一行不用动。
+# ============================================================
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: ${DASHSCOPE_API_KEY}
+      model-name: qwen3.8-flash
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      temperature: 0.7
+      timeout: PT60S
+      max-retries: 2
+      log-requests: true
+      log-responses: true
+
+    streaming-chat-model:
+      api-key: ${DASHSCOPE_API_KEY}
+      model-name: qwen3.8-flash
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      temperature: 0.7
+      timeout: PT60S
+      log-requests: true
+      log-responses: true
