@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 商品 Mapper -->
+<mapper namespace="com.huashan.smartmallbackend.mapper.ProductMapper">
+
+    <!-- 公共字段列表 -->
+    <sql id="cols">
+        id, name, price, category, brand, description, status, deleted, create_time, update_time
+    </sql>
+
+    <!-- 按主键查询 -->
+    <select id="selectById" resultType="Product">
+        SELECT
+        <include refid="cols"/>
+        FROM t_product
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 管理端分页查询：关键词同时匹配商品名和品牌 -->
+    <select id="selectPage" resultType="Product">
+        SELECT
+        <include refid="cols"/>
+        FROM t_product
+        <where>
+            deleted = 0
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                OR brand LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <!-- 新增商品 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_product (name, price, category, brand, description, status)
+        VALUES (#{name}, #{price}, #{category}, #{brand}, #{description}, #{status})
+    </insert>
+
+    <!-- 修改商品（不动物流删除标记和创建时间） -->
+    <update id="update">
+        UPDATE t_product
+        SET name        = #{name},
+            price       = #{price},
+            category    = #{category},
+            brand       = #{brand},
+            description = #{description},
+            status      = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 逻辑删除 -->
+    <update id="deleteById">
+        UPDATE t_product
+        SET deleted = 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- 上下架 -->
+    <update id="updateStatus">
+        UPDATE t_product
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询全部上架商品（供用户端浏览） -->
+    <select id="selectAllOnShelf" resultType="Product">
+        SELECT
+        <include refid="cols"/>
+        FROM t_product
+        WHERE deleted = 0 AND status = 1
+        ORDER BY id DESC
+    </select>
+
+</mapper>

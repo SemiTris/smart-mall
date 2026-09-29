@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  会话消息 Mapper
+  写入是「全量覆盖」语义（删干净再批量插），所以只有查 / 删 / 批量插三种操作。
+-->
+<mapper namespace="com.huashan.smartmallbackend.mapper.ChatMessageMapper">
+
+    <!-- 公共字段列表 -->
+    <sql id="cols">
+        id, session_id, seq, role, content, message_json, create_time
+    </sql>
+
+    <!-- 全部消息（含 system，按 seq 升序）—— ChatMemoryStore 重建记忆用，必须带 system -->
+    <select id="selectBySessionId" resultType="ChatMessageEntity">
+        SELECT
+        <include refid="cols"/>
+        FROM t_chat_message
+        WHERE session_id = #{sessionId}
+        ORDER BY seq ASC
+    </select>
+
+    <!-- 可见消息（剔除 system / tool）—— 前端与管理员展示用 -->
+    <select id="selectVisibleBySessionId" resultType="ChatMessageEntity">
+        SELECT
+        <include refid="cols"/>
+        FROM t_chat_message
+        WHERE session_id = #{sessionId}
+        AND role IN ('user', 'ai')
+        ORDER BY seq ASC
+    </select>
+
+    <!-- 删除某会话的全部消息（全量覆盖的第一步） -->
+    <delete id="deleteBySessionId">
+        DELETE
+        FROM t_chat_message
+        WHERE session_id = #{sessionId}
+    </delete>
+
+    <!--
+      批量插入：一条 INSERT 塞多行，避免 n 次网络往返
+
+      collection="list" 是固定写法 —— 接口方法只有一个 List 参数时，
+      MyBatis 会把它包装成 {list=..., collection=...} 两个键，用哪个都行。
+      separator="," 负责在每组括号之间补逗号。
+    -->
+    <insert id="batchInsert">
+        INSERT INTO t_chat_message (session_id, seq, role, content, message_json)
+        VALUES
+        <foreach collection="list" item="r" separator=",">
+            (#{r.sessionId}, #{r.seq}, #{r.role}, #{r.content}, #{r.messageJson})
+        </foreach>
+    </insert>
+
+    <!-- 统计某会话的可见消息条数 -->
+    <select id="countVisible" resultType="int">
+        SELECT COUNT(*)
+        FROM t_chat_message
+        WHERE session_id = #{sessionId}
+        AND role IN ('user', 'ai')
+    </select>
+
+</mapper>

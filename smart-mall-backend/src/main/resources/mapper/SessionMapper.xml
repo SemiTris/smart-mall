@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 会话 Mapper -->
+<mapper namespace="com.huashan.smartmallbackend.mapper.SessionMapper">
+
+    <!-- 公共字段列表 -->
+    <sql id="cols">
+        id, session_id, user_id, title, deleted, create_time, update_time
+    </sql>
+
+    <!-- 按会话 UUID 查询 -->
+    <select id="selectBySessionId" resultType="Session">
+        SELECT
+        <include refid="cols"/>
+        FROM t_session
+        WHERE session_id = #{sessionId} AND deleted = 0
+    </select>
+
+    <!-- 某用户的全部会话（左侧列表用，按最后活跃时间倒序） -->
+    <select id="selectByUserId" resultType="Session">
+        SELECT
+        <include refid="cols"/>
+        FROM t_session
+        WHERE user_id = #{userId} AND deleted = 0
+        ORDER BY update_time DESC, id DESC
+    </select>
+
+    <!--
+      管理端分页查询：联查用户名 + 统计消息条数
+
+      两个细节：
+        ① 表要起别名 s / u，否则 id、create_time 这些同名列分不清是哪个表的
+        ② message_count 列名带下划线，靠 map-underscore-to-camel-case
+           自动映射到 Session.messageCount；username 同理映射到 Session.username
+    -->
+    <select id="selectPage" resultType="Session">
+        SELECT s.id,
+               s.session_id,
+               s.user_id,
+               s.title,
+               s.deleted,
+               s.create_time,
+               s.update_time,
+               u.username AS username,
+               (SELECT COUNT(*)
+                FROM t_chat_message m
+                WHERE m.session_id = s.session_id
+                  AND m.role IN ('user', 'ai')) AS message_count
+        FROM t_session s
+                 LEFT JOIN t_user u ON u.id = s.user_id
+        <where>
+            s.deleted = 0
+            <if test="username != null and username != ''">
+                AND u.username LIKE CONCAT('%', #{username}, '%')
+            </if>
+        </where>
+        ORDER BY s.update_time DESC, s.id DESC
+    </select>
+
+    <!-- 新建会话 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_session (session_id, user_id, title)
+        VALUES (#{sessionId}, #{userId}, #{title})
+    </insert>
+
+    <!-- 刷新会话标题（取首问前若干字） -->
+    <update id="updateTitle">
+        UPDATE t_session
+        SET title = #{title},
+            update_time = NOW()
+        WHERE session_id = #{sessionId}
+    </update>
+
+    <!-- 刷新会话最后活跃时间（只读钩子调用，不写消息表） -->
+    <update id="touch">
+        UPDATE t_session
+        SET update_time = NOW()
+        WHERE session_id = #{sessionId}
+    </update>
+
+    <!-- 逻辑删除会话 -->
+    <update id="deleteBySessionId">
+        UPDATE t_session
+        SET deleted = 1
+        WHERE session_id = #{sessionId}
+    </update>
+
+</mapper>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  订单 Mapper（一对多关联查询的核心）
+-->
+<mapper namespace="com.huashan.smartmallbackend.mapper.OrderMapper">
+
+    <!--
+      ★ 一对多结果映射（对应原来注解版的 @Results + @Many）
+
+      读法：
+        property="items"  目标属性，Order 实体里的 List<OrderItem>
+        column="id"       把主表 t_order 的 id 这一列，作为参数传给下面那条子查询
+        select="..."      子查询 = OrderItemMapper.selectByOrderId
+
+      ⚠️ 第一行的 <id> 不能省！
+         只要 resultMap 里出现了 column="id" 的 <collection>，MyBatis 就会把
+         "id" 这一列登记进「已映射列」，自动映射于是跳过它 —— 结果就是
+         Order.id 永远是 null（其他字段都正常，特别容易漏掉）。
+         显式写一条 <id> 把它捡回来。
+
+      其余字段（order_no -> orderNo 等）由 map-underscore-to-camel-case 自动映射。
+    -->
+    <resultMap id="orderWithItems" type="Order">
+        <id property="id" column="id"/>
+        <collection property="items"
+                    column="id"
+                    select="com.huashan.smartmallbackend.mapper.OrderItemMapper.selectByOrderId"/>
+    </resultMap>
+
+    <!-- 订单主表的公共字段 -->
+    <sql id="cols">
+        id, order_no, user_id, username, total_amount, status, create_time
+    </sql>
+
+    <!-- 按订单号查询（含明细） -->
+    <select id="selectByOrderNo" resultMap="orderWithItems">
+        SELECT
+        <include refid="cols"/>
+        FROM t_order
+        WHERE order_no = #{orderNo}
+    </select>
+
+    <!-- 按用户名查询（AI 工具调用用） -->
+    <select id="selectByUsername" resultMap="orderWithItems">
+        SELECT
+        <include refid="cols"/>
+        FROM t_order
+        WHERE username = #{username}
+        ORDER BY id DESC
+    </select>
+
+    <!-- 按状态查询（AI 工具调用用） -->
+    <select id="selectByStatus" resultMap="orderWithItems">
+        SELECT
+        <include refid="cols"/>
+        FROM t_order
+        WHERE status = #{status}
+        ORDER BY id DESC
+    </select>
+
+    <!-- 管理端分页查询（PageHelper 会自动包 count） -->
+    <select id="selectPage" resultMap="orderWithItems">
+        SELECT
+        <include refid="cols"/>
+        FROM t_order
+        <where>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY id DESC
+    </select>
+
+    <!-- 统计订单总数 -->
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM t_order
+    </select>
+
+</mapper>
